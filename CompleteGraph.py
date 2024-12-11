@@ -1,10 +1,12 @@
-import networkx as nx
-import matplotlib.pyplot as plt
 import heapq
-import random
 import os
+import random
 from typing import List, Tuple, Dict, Optional
 
+import matplotlib.pyplot as plt
+import networkx as nx
+
+num_of_edges = random.randint(1, 10)
 
 class KomplettGraph:
     def __init__(self, k: int = 10):
@@ -25,6 +27,7 @@ class KomplettGraph:
         heapq.heapify(self.edge_heap)
         self.current_time: int = len(self.edge_heap)
 
+
     def check_planarity(self) -> Tuple[bool, str]:
         """
         Check if the current graph G is planar.
@@ -42,80 +45,7 @@ class KomplettGraph:
         info = (f"Planar: {is_planar}\n"
                 f"Nodes: {n_nodes}, Edges: {n_edges}")
         return is_planar, info
-
-    def add_new_edges(self, new_node: int) -> None:
-        """
-        Add edges connecting a newly added node to all existing nodes.
-        
-        Parameters
-        ----------
-        new_node : int
-            The index of the new node being added to the graph.
-        """
-        for existing_node in range(new_node):
-            self.G.add_edge(existing_node, new_node)
-            # Add new edge to heap with current timestamp
-            heapq.heappush(self.edge_heap, (self.current_time, (existing_node, new_node)))
-            self.current_time += 1
-
-    def remove_old_edges(self) -> None:
-        """
-        Remove the oldest edges while maintaining a chromatic number of 10.
-        Uses a heap structure to ensure that edges are removed in the order they were added.
-        """
-        while self.edge_heap:
-            oldest_time, (u, v) = heapq.heappop(self.edge_heap)
-            
-            # Skip if edge no longer exists
-            if not self.G.has_edge(u, v):
-                continue
-            
-            # Tentatively remove the edge
-            self.G.remove_edge(u, v)
-            if self.chromatic_number() != 10:
-                # If chromatic number changes, revert removal
-                self.G.add_edge(u, v)
-                # Reinsert the edge into the heap at its original time
-                heapq.heappush(self.edge_heap, (oldest_time, (u, v)))
-                break
-
-    def random_edge_removal(self) -> None:
-        """
-        Randomly attempt to remove edges while maintaining a chromatic number of 10.
-        If removing an edge changes the chromatic number, revert the removal.
-        """
-        edges = list(self.G.edges())
-        random.shuffle(edges)  # Shuffle edges for random removal attempt
-
-        for u, v in edges:
-            self.G.remove_edge(u, v)
-            if self.chromatic_number() != 10:
-                # If chromatic number changes, revert removal
-                self.G.add_edge(u, v)
-
-    def add_edge_step(self, step: int, removal_policy: str = "old") -> None:
-        """
-        Perform a single step of adding a new node and its edges, 
-        then remove edges according to the specified removal policy.
-        
-        Parameters
-        ----------
-        step : int
-            The current step count.
-        removal_policy : str
-            The policy for removing edges. Options:
-            - "old": Remove oldest edges first.
-            - "random": Remove random edges.
-        """
-        new_node = self.G.number_of_nodes()
-        self.G.add_node(new_node)
-        self.add_new_edges(new_node)
-        
-        # Apply removal policy
-        if removal_policy == "old":
-            self.remove_old_edges()
-        elif removal_policy == "random":
-            self.random_edge_removal()
+    
 
     def chromatic_number(self) -> int:
         """
@@ -129,6 +59,7 @@ class KomplettGraph:
         coloring = nx.coloring.greedy_color(self.G, strategy="largest_first")
         # The chromatic number is the count of unique colors used
         return max(coloring.values()) + 1 if coloring else 1
+
 
     def arboricity(self) -> int:
         """
@@ -154,6 +85,7 @@ class KomplettGraph:
         
         # Arboricity is roughly the ceiling of the maximum density
         return int(max_density)
+
 
     @staticmethod
     def thickness_dfs(v: int,
@@ -203,7 +135,8 @@ class KomplettGraph:
 
         return numbering_counter
 
-    def perform_dfs_numbering(self) -> int:
+
+    def check_thickness(self) -> int:
         """
         Perform DFS numbering on the current graph and return the highest DFS number assigned.
         
@@ -226,6 +159,133 @@ class KomplettGraph:
 
         return numbering_counter
 
+
+    def add_new_edges(self, new_node: int, num_edges: int = None) -> None:
+        """
+        Add edges connecting a newly added node to a specified number of existing nodes.
+        
+        Parameters
+        ----------
+        new_node : int
+            The index of the new node being added to the graph.
+        num_edges : int, optional
+            The number of edges to add. If None, adds edges to all existing nodes.
+            If greater than the number of existing nodes, connects to all existing nodes.
+        """
+        existing_nodes = list(range(new_node))
+        
+        # If num_edges is None or exceeds available nodes, connect to all nodes
+        if num_edges is None or num_edges >= len(existing_nodes):
+            nodes_to_connect = existing_nodes
+        else:
+            nodes_to_connect = random.sample(existing_nodes, num_edges)
+        
+        for existing_node in nodes_to_connect:
+            self.G.add_edge(existing_node, new_node)
+            # Add new edge to heap with current timestamp
+            heapq.heappush(self.edge_heap, (self.current_time, (existing_node, new_node)))
+            self.current_time += 1
+
+
+    def remove_old_edges(self, num_edges_to_remove: int = 1) -> None:
+        """
+        Remove a specified number of the oldest edges while maintaining a chromatic number of 10.
+        Uses a heap structure to ensure that edges are removed in the order they were added.
+        
+        Parameters
+        ----------
+        num_edges_to_remove : int
+            The number of edges to attempt to remove.
+        """
+        removed_count = 0
+        while self.edge_heap and removed_count < num_edges_to_remove:
+            u, v = self.edge_heap.pop()
+            # Skip if edge no longer exists
+            if not self.G.has_edge(u, v):
+                continue
+            
+            # Tentatively remove the edge
+            self.G.remove_edge(u, v)
+            removed_count += 1
+
+    def random_edge_removal(self, num_edges_to_remove: int = 1) -> None:
+        """
+        Randomly attempt to remove a specified number of edges while maintaining a chromatic number of 10.
+        If removing an edge changes the chromatic number, revert the removal.
+        
+        Parameters
+        ----------
+        num_edges_to_remove : int
+            The number of edges to attempt to remove.
+        """
+        edges = list(self.G.edges())
+        random.shuffle(edges)  # Shuffle edges for random removal attempt
+
+        removed_count = 0
+        for u, v in edges:
+            if removed_count >= num_edges_to_remove:
+                break
+            self.G.remove_edge(u, v)
+            removed_count += 1
+
+    def add_edge_step(self, step: int, chromatic_num_original, removal_policy: str = "old", num_edges = num_of_edges) -> bool:
+        """
+        Perform a single step of adding a new node and its edges, 
+        then remove edges according to the specified removal policy.
+        Reverts changes if constraints are violated.
+        
+        Parameters
+        ----------
+        step : int
+            The current step count.
+        removal_policy : str
+            The policy for removing edges. Options:
+            - "old": Remove oldest edges first.
+            - "random": Remove random edges.
+        num_edges : int, optional
+            The number of edges to add for the new node. If None, adds edges to all existing nodes.
+            
+        Returns
+        -------
+        bool
+            True if changes were successful, False if changes were reverted
+        """
+        # Store the current state of the graph
+        original_graph = self.G.copy()
+        original_heap = self.edge_heap.copy()
+        original_time = self.current_time
+
+        # Try making changes
+        new_node = self.G.number_of_nodes()
+        self.G.add_node(new_node)
+        self.add_new_edges(new_node, num_edges)
+        
+        # Apply removal policy
+        if removal_policy == "old":
+            self.remove_old_edges(num_edges)
+        elif removal_policy == "random":
+            self.random_edge_removal(num_edges)
+
+        # Check constraints
+        chrom_num = self.chromatic_number()
+        arb_num = self.arboricity()
+        
+        # Revert if constraints are violated
+        # if chrom_num != chromatic_num_original:
+        #     self.G = original_graph
+        #     self.edge_heap = original_heap
+        #     self.current_time = original_time
+        #     print(f"Chromatic number not {chromatic_num_original} at step {step}")
+        if arb_num > 9:
+            self.G = original_graph
+            self.edge_heap = original_heap
+            self.current_time = original_time
+            error_message = (f"Arboricity reached 9 at step {step}")
+            return False, error_message
+        
+        return True
+
+
     def create_k_plus_edges(self, removal_policy: str = "old") -> None:
         """
         Generate and analyze graphs by iteratively adding nodes and edges
@@ -241,11 +301,14 @@ class KomplettGraph:
         """
         i = 0
         graph_data = []
-        
+        chromatic_num_original = self.chromatic_number()
         try:
             while True:
                 if i > 0:
-                    self.add_edge_step(i, removal_policy)
+                    success, error_message = self.add_edge_step(i, chromatic_num_original, removal_policy)
+                    if not success:
+                        print(error_message)
+                        continue
                 
                 # Check properties
                 is_planar, planar_info = self.check_planarity()
@@ -253,7 +316,7 @@ class KomplettGraph:
                 arb_num = self.arboricity()
 
                 # Perform DFS numbering after modifications
-                dfs_number = self.perform_dfs_numbering()
+                thickness = self.check_thickness()
                 
                 # Store current state
                 graph_data.append({
@@ -263,7 +326,7 @@ class KomplettGraph:
                     'nodes': self.G.number_of_nodes(),
                     'edges': self.G.number_of_edges(),
                     'arboricity': arb_num,
-                    'thickness': dfs_number
+                    'thickness': thickness
                 })
                 
                 # Print current state
@@ -271,18 +334,23 @@ class KomplettGraph:
                 print(f"  Chromatic Number: {chrom_num}")
                 print(f"  Is Planar: {is_planar}")
                 print(f"  Arboricity: {arb_num}")
-                print(f"  Thickness: {dfs_number}")
+                print(f"  Thickness: {thickness}")
                 print("-" * 30)
                 
                 # Stop conditions
+
+                if chrom_num != chromatic_num_original:
+                    print(f"Chromatic number not {chromatic_num_original} at step {i}")
+                    break
                 if is_planar:
                     print(f"Found planar graph at step {i}")
                     # break
                 if arb_num >= 7:
                     print(f"Arboricity reached 7 at step {i}")
                     # break
-                    
+                
                 i += 1
+
                 
         except KeyboardInterrupt:
             print("\nComputation stopped by user")
@@ -290,6 +358,7 @@ class KomplettGraph:
         # Print and save summary table
         self._save_summary(graph_data, removal_policy, i)
         
+
     def _save_summary(self, graph_data: List[Dict], removal_policy: str, steps: int) -> None:
         """
         Save a summary of the collected graph data to a text file.
@@ -336,4 +405,4 @@ class KomplettGraph:
 if __name__ == "__main__":
     # Example usage:
     k10 = KomplettGraph(19)
-    k10.create_k_plus_edges(removal_policy="old")
+    k10.create_k_plus_edges(removal_policy="random")
