@@ -12,12 +12,31 @@ This repository contains the implementation of algorithms and tools for partitio
 - **Graph Analysis**:
   - Computes the **chromatic number** of the graph.
   - Calculates **arboricity** based on edge density.
+  - Computes **thickness** using a depth-first search (DFS) approach.
 - **Visualization**: Displays graph structures and their properties at each step.
 
 ## Prerequisites
 
-Ensure you have the following installed:
 - Python 3.7 or higher
 - Required Python packages:
   ```bash
   pip install networkx matplotlib
+  ```
+
+## Usage
+
+To run the graph partitioning algorithm, execute the `main.py` script. This will generate and analyze a complete graph with the specified number of nodes.
+
+```bash
+python main.py
+```
+
+## Configuration
+
+- **Graph Size**: The number of nodes in the complete graph can be adjusted in `main.py` by changing the parameter passed to `KomplettGraph`.
+- **Edge Operations**: Customize edge addition and removal policies in `graph/edge_operations.py`.
+- **Step Limits**: Modify `STEP_LIMIT` and `RANDOM_LIMIT` in `graph/komplett_graph.py` to control the number of iterations and randomness.
+
+## Output
+
+Results, including visualizations and summaries, are saved in the `results/graphs` directory. The summary includes details about the chromatic number, planarity, arboricity, and thickness of the graphs at each step.
